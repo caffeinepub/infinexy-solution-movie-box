@@ -160,6 +160,7 @@ export interface backendInterface {
     loginUser(username: string, passwordHash: string): Promise<{ isAdmin: boolean } | null>;
     userExists(username: string): Promise<boolean>;
     isAdminUser(username: string): Promise<boolean>;
+    changePassword(username: string, oldPasswordHash: string, newPasswordHash: string): Promise<boolean>;
 }
 import type { ExternalBlob as _ExternalBlob, Genre as _Genre, Movie as _Movie, MovieId as _MovieId, UserProfile as _UserProfile, UserRole as _UserRole, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -444,6 +445,10 @@ export class Backend implements backendInterface {
     }
     async isAdminUser(arg0: string): Promise<boolean> {
         const result = await this.actor.isAdminUser(arg0);
+        return result;
+    }
+    async changePassword(arg0: string, arg1: string, arg2: string): Promise<boolean> {
+        const result = await this.actor.changePassword(arg0, arg1, arg2);
         return result;
     }
 }

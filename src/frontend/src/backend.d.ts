@@ -47,6 +47,7 @@ export interface backendInterface {
     loginUser(username: string, passwordHash: string): Promise<{ isAdmin: boolean } | null>;
     userExists(username: string): Promise<boolean>;
     isAdminUser(username: string): Promise<boolean>;
+    changePassword(username: string, oldPasswordHash: string, newPasswordHash: string): Promise<boolean>;
     addMovie(title: string, description: string, year: bigint, genreText: string, thumbnailBlob: ExternalBlob, videoBlob: ExternalBlob): Promise<MovieId>;
     deleteMovie(movieId: MovieId): Promise<void>;
     getAllMovies(): Promise<Array<Movie>>;

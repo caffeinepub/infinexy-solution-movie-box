@@ -86,7 +86,7 @@ export default function UploadMovieModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -97,7 +97,7 @@ export default function UploadMovieModal({
             onClick={!uploading ? onClose : undefined}
           />
           <motion.div
-            className="relative w-full max-w-lg rounded-2xl overflow-hidden"
+            className="relative w-full max-w-lg mx-0 sm:mx-auto rounded-t-2xl sm:rounded-2xl overflow-hidden"
             style={{ background: "#121B2B", border: "1px solid #2A364A" }}
             initial={{ scale: 0.95, y: 20, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}

@@ -24,29 +24,46 @@ actor {
   };
 
   stable var stableUsers : [(Text, StoredUser)] = [];
+
+  // Kept for stable variable compatibility with previous versions.
+  // firstUserRegistered was used in older versions; adminInitialized replaces it.
   stable var firstUserRegistered : Bool = false;
+  stable var adminInitialized : Bool = false;
 
   let users = Map.fromIter<Text, StoredUser>(stableUsers.vals());
+
+  // Seed the admin account only once (on first ever deploy).
+  // After that, never overwrite — so password changes survive upgrades.
+  // Also treat firstUserRegistered=true (from old version) as already initialized.
+  private func ensureAdminExists() {
+    if (not adminInitialized and not firstUserRegistered) {
+      users.add("admin", {
+        username = "admin";
+        passwordHash = "a63f45da"; // simpleHash("admin123")
+        isAdmin = true;
+      });
+    };
+    adminInitialized := true;
+    firstUserRegistered := true;
+  };
+
+  do { ensureAdminExists() };
 
   system func preupgrade() {
     stableUsers := users.entries().toArray();
   };
 
   system func postupgrade() {
+    // Restore users from stable storage into the in-memory map.
+    for ((k, v) in stableUsers.vals()) {
+      users.add(k, v);
+    };
     stableUsers := [];
   };
 
-  /// Register a new user. Returns false if username already taken.
-  public func registerUser(username : Text, passwordHash : Text) : async Bool {
-    if (username.size() == 0) Runtime.trap("Username cannot be empty");
-    switch (users.get(username)) {
-      case (?_) { return false };
-      case null {};
-    };
-    let isAdmin = not firstUserRegistered;
-    firstUserRegistered := true;
-    users.add(username, { username; passwordHash; isAdmin });
-    true;
+  /// Registration is disabled — only the built-in admin account (admin/admin123) is allowed.
+  public func registerUser(_username : Text, _passwordHash : Text) : async Bool {
+    false;
   };
 
   /// Validate credentials. Returns null if invalid, login info on success.
@@ -73,6 +90,19 @@ actor {
     switch (users.get(username)) {
       case null { false };
       case (?u) { u.isAdmin };
+    };
+  };
+
+  /// Change password for a user. Validates old password before updating.
+  /// Returns false if username not found or old password doesn't match.
+  public func changePassword(username : Text, oldPasswordHash : Text, newPasswordHash : Text) : async Bool {
+    switch (users.get(username)) {
+      case null { false };
+      case (?u) {
+        if (u.passwordHash != oldPasswordHash) { return false };
+        users.add(username, { username; passwordHash = newPasswordHash; isAdmin = u.isAdmin });
+        true;
+      };
     };
   };
 

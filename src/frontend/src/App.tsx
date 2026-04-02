@@ -1,9 +1,17 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
-import { Clapperboard, LogOut, Search, Upload } from "lucide-react";
+import {
+  Clapperboard,
+  KeyRound,
+  LogOut,
+  Menu,
+  Search,
+  Upload,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AuthModal from "./components/AuthModal";
+import ChangePasswordModal from "./components/ChangePasswordModal";
 import MovieCard from "./components/MovieCard";
 import MoviePlayerModal from "./components/MoviePlayerModal";
 import RightPanel from "./components/RightPanel";
@@ -36,10 +44,9 @@ function AppContent() {
   const [yearFilter, setYearFilter] = useState<"all" | string>("all");
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authDefaultTab, setAuthDefaultTab] = useState<"login" | "register">(
-    "login",
-  );
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
@@ -80,13 +87,12 @@ function AppContent() {
   }, [movies, sidebarFilter, genreFilter, yearFilter, debouncedSearch]);
 
   const handleOpenLogin = useCallback(() => {
-    setAuthDefaultTab("login");
     setAuthModalOpen(true);
   }, []);
 
-  const handleOpenRegister = useCallback(() => {
-    setAuthDefaultTab("register");
-    setAuthModalOpen(true);
+  const handleSidebarFilterChange = useCallback((filter: SidebarFilter) => {
+    setSidebarFilter(filter);
+    setMobileSidebarOpen(false);
   }, []);
 
   const pageTitle = GENRE_LABELS[sidebarFilter] ?? "All Movies";
@@ -96,22 +102,36 @@ function AppContent() {
       <div className="flex min-h-screen" style={{ background: "#0B1220" }}>
         <Sidebar
           activeFilter={sidebarFilter}
-          onFilterChange={setSidebarFilter}
+          onFilterChange={handleSidebarFilterChange}
           stats={stats}
           statsLoading={statsLoading}
+          mobileOpen={mobileSidebarOpen}
+          onMobileClose={() => setMobileSidebarOpen(false)}
         />
 
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Top Bar */}
           <header
-            className="sticky top-0 z-30 flex items-center gap-3 px-5 py-3"
+            className="sticky top-0 z-30 flex items-center gap-2 px-3 sm:px-5 py-3"
             style={{
               background: "rgba(11,18,32,0.95)",
               backdropFilter: "blur(10px)",
               borderBottom: "1px solid #2A364A",
             }}
           >
-            <div className="lg:hidden flex items-center gap-2 mr-2">
+            {/* Mobile menu button */}
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-xl text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              style={{ background: "#172234", border: "1px solid #2A364A" }}
+              aria-label="Open menu"
+              data-ocid="nav.toggle"
+            >
+              <Menu size={18} />
+            </button>
+
+            <div className="lg:hidden flex items-center gap-2 shrink-0">
               <div
                 className="w-7 h-7 rounded-lg flex items-center justify-center"
                 style={{ background: "rgba(214,178,94,0.15)" }}
@@ -135,7 +155,7 @@ function AppContent() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search movies by title or description..."
+                placeholder="Search movies..."
                 className="w-full pl-9 pr-4 py-2 rounded-xl text-sm focus:outline-none transition-colors"
                 style={{
                   background: "#172234",
@@ -146,14 +166,14 @@ function AppContent() {
               />
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {auth.isAuthenticated ? (
                 <>
                   {isAdmin && (
                     <button
                       type="button"
                       onClick={() => setUploadModalOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all"
+                      className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-sm font-semibold transition-all"
                       style={{ backgroundColor: "#D6B25E", color: "#0B1220" }}
                       data-ocid="upload.open_modal_button"
                     >
@@ -162,14 +182,14 @@ function AppContent() {
                     </button>
                   )}
                   <div
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+                    className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-xl"
                     style={{
                       background: "#172234",
                       border: "1px solid #2A364A",
                     }}
                   >
                     <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                       style={{
                         background: "rgba(214,178,94,0.2)",
                         color: "#D6B25E",
@@ -182,7 +202,7 @@ function AppContent() {
                     </span>
                     {auth.user?.isAdmin && (
                       <span
-                        className="text-xs font-bold px-1.5 py-0.5 rounded"
+                        className="text-xs font-bold px-1.5 py-0.5 rounded hidden sm:inline"
                         style={{
                           background: "rgba(214,178,94,0.15)",
                           color: "#D6B25E",
@@ -192,6 +212,19 @@ function AppContent() {
                       </span>
                     )}
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setChangePasswordOpen(true)}
+                    className="p-2 rounded-xl text-muted-foreground hover:text-foreground transition-colors"
+                    style={{
+                      background: "#172234",
+                      border: "1px solid #2A364A",
+                    }}
+                    title="Change Password"
+                    data-ocid="change_password.open_modal_button"
+                  >
+                    <KeyRound size={15} />
+                  </button>
                   <button
                     type="button"
                     onClick={auth.logout}
@@ -207,52 +240,41 @@ function AppContent() {
                   </button>
                 </>
               ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleOpenLogin}
-                    className="px-4 py-2 rounded-xl text-sm font-semibold transition-all text-foreground"
-                    style={{
-                      border: "1px solid #2A364A",
-                      background: "#172234",
-                    }}
-                    data-ocid="nav.link"
-                  >
-                    LOG IN
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleOpenRegister}
-                    className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-                    style={{ backgroundColor: "#D6B25E", color: "#0B1220" }}
-                    data-ocid="nav.link"
-                  >
-                    REGISTER
-                  </button>
-                </>
+                <button
+                  type="button"
+                  onClick={handleOpenLogin}
+                  className="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all text-foreground"
+                  style={{
+                    border: "1px solid #2A364A",
+                    background: "#172234",
+                  }}
+                  data-ocid="nav.link"
+                >
+                  LOG IN
+                </button>
               )}
             </div>
           </header>
 
           {/* Page Content */}
           <div className="flex-1 overflow-y-auto scrollbar-thin">
-            <div className="px-5 pt-6 pb-3">
+            <div className="px-3 sm:px-5 pt-6 pb-6">
               <motion.h1
-                className="font-display font-bold mb-4"
-                style={{ fontSize: "2rem", color: "#E9EEF7" }}
+                className="font-display font-bold mb-4 text-2xl sm:text-3xl"
+                style={{ color: "#E9EEF7" }}
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
               >
                 {pageTitle}
               </motion.h1>
 
-              <div className="flex flex-wrap gap-3 mb-6">
+              <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
                 <select
                   value={genreFilter}
                   onChange={(e) =>
                     setGenreFilter(e.target.value as "all" | Genre)
                   }
-                  className="rounded-lg px-3 py-2 text-sm focus:outline-none transition-colors"
+                  className="rounded-lg px-3 py-2 text-sm focus:outline-none transition-colors flex-1 sm:flex-none min-w-0"
                   style={{
                     background: "#172234",
                     border: "1px solid #2A364A",
@@ -269,7 +291,7 @@ function AppContent() {
                 <select
                   value={yearFilter}
                   onChange={(e) => setYearFilter(e.target.value)}
-                  className="rounded-lg px-3 py-2 text-sm focus:outline-none transition-colors"
+                  className="rounded-lg px-3 py-2 text-sm focus:outline-none transition-colors flex-1 sm:flex-none min-w-0"
                   style={{
                     background: "#172234",
                     border: "1px solid #2A364A",
@@ -288,7 +310,7 @@ function AppContent() {
 
               {moviesLoading ? (
                 <div
-                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-3 gap-4"
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-3 gap-3 sm:gap-4"
                   data-ocid="movies.loading_state"
                 >
                   {SKELETON_KEYS.map((key) => (
@@ -328,7 +350,7 @@ function AppContent() {
                 </div>
               ) : (
                 <div
-                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-3 gap-4"
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-3 gap-3 sm:gap-4"
                   data-ocid="movies.list"
                 >
                   {filteredMovies.map((movie, idx) => (
@@ -376,12 +398,15 @@ function AppContent() {
         />
         <AuthModal
           open={authModalOpen}
-          defaultTab={authDefaultTab}
           onClose={() => setAuthModalOpen(false)}
         />
         <UploadMovieModal
           open={uploadModalOpen}
           onClose={() => setUploadModalOpen(false)}
+        />
+        <ChangePasswordModal
+          open={changePasswordOpen}
+          onClose={() => setChangePasswordOpen(false)}
         />
 
         <Toaster position="top-right" theme="dark" />

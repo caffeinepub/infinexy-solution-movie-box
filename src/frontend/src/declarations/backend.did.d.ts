@@ -88,6 +88,7 @@ export interface _SERVICE {
   'loginUser' : ActorMethod<[string, string], [] | [{ 'isAdmin': boolean }]>,
   'userExists' : ActorMethod<[string], boolean>,
   'isAdminUser' : ActorMethod<[string], boolean>,
+  'changePassword' : ActorMethod<[string, string, string], boolean>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

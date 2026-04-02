@@ -10,18 +10,12 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-export default function AuthModal({
-  open,
-  defaultTab = "login",
-  onClose,
-}: AuthModalProps) {
-  const [tab, setTab] = useState<"login" | "register">(defaultTab);
+export default function AuthModal({ open, onClose }: AuthModalProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login, register } = useAuth();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,39 +23,16 @@ export default function AuthModal({
       toast.error("Please fill in all fields");
       return;
     }
-    if (tab === "register") {
-      if (password !== confirmPassword) {
-        toast.error("Passwords do not match");
-        return;
-      }
-      if (password.length < 6) {
-        toast.error("Password must be at least 6 characters");
-        return;
-      }
-    }
     setLoading(true);
     try {
-      if (tab === "login") {
-        const ok = await login(username.trim(), password);
-        if (!ok) {
-          toast.error("Invalid username or password");
-        } else {
-          toast.success(`Welcome back, ${username}!`);
-          onClose();
-          setUsername("");
-          setPassword("");
-        }
+      const ok = await login(username.trim(), password);
+      if (!ok) {
+        toast.error("Invalid username or password");
       } else {
-        const ok = await register(username.trim(), password);
-        if (!ok) {
-          toast.error("Username already taken");
-        } else {
-          toast.success(`Account created! Welcome, ${username}!`);
-          onClose();
-          setUsername("");
-          setPassword("");
-          setConfirmPassword("");
-        }
+        toast.success(`Welcome back, ${username}!`);
+        onClose();
+        setUsername("");
+        setPassword("");
       }
     } finally {
       setLoading(false);
@@ -72,7 +43,7 @@ export default function AuthModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -85,7 +56,7 @@ export default function AuthModal({
           />
           {/* Modal */}
           <motion.div
-            className="relative w-full max-w-md mx-4 rounded-2xl overflow-hidden"
+            className="relative w-full max-w-md mx-0 sm:mx-4 rounded-t-2xl sm:rounded-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
             style={{ background: "#121B2B", border: "1px solid #2A364A" }}
             initial={{ scale: 0.95, y: 20, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
@@ -110,49 +81,21 @@ export default function AuthModal({
               </button>
             </div>
 
-            {/* Tabs */}
-            <div
-              className="flex mx-6 rounded-xl overflow-hidden mb-6"
-              style={{ background: "#0B1220" }}
-            >
-              <button
-                type="button"
-                onClick={() => setTab("login")}
-                className={`flex-1 py-2.5 text-sm font-semibold transition-all ${
-                  tab === "login"
-                    ? "rounded-xl text-navy-900 bg-gold"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                style={
-                  tab === "login"
-                    ? { backgroundColor: "#D6B25E", color: "#0B1220" }
-                    : {}
-                }
-                data-ocid="auth.tab"
+            {/* Title */}
+            <div className="px-6 mb-6">
+              <h2
+                className="text-xl font-display font-bold"
+                style={{ color: "#E9EEF7" }}
               >
                 Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab("register")}
-                className={`flex-1 py-2.5 text-sm font-semibold transition-all ${
-                  tab === "register"
-                    ? "rounded-xl text-navy-900 bg-gold"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                style={
-                  tab === "register"
-                    ? { backgroundColor: "#D6B25E", color: "#0B1220" }
-                    : {}
-                }
-                data-ocid="auth.tab"
-              >
-                Register
-              </button>
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter your credentials to access your account
+              </p>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-4">
+            <form onSubmit={handleSubmit} className="px-6 pb-8 space-y-4">
               <div>
                 <label
                   htmlFor="auth-username"
@@ -198,26 +141,6 @@ export default function AuthModal({
                   </button>
                 </div>
               </div>
-              {tab === "register" && (
-                <div>
-                  <label
-                    htmlFor="auth-confirm-password"
-                    className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5"
-                  >
-                    Confirm Password
-                  </label>
-                  <input
-                    id="auth-confirm-password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm your password"
-                    className="w-full rounded-lg px-4 py-2.5 text-sm bg-[#0B1220] border border-[#2A364A] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-gold transition-colors"
-                    style={{ borderColor: "#2A364A" }}
-                    data-ocid="auth.input"
-                  />
-                </div>
-              )}
               <button
                 type="submit"
                 disabled={loading}
@@ -226,24 +149,8 @@ export default function AuthModal({
                 data-ocid="auth.submit_button"
               >
                 {loading && <Loader2 size={16} className="animate-spin" />}
-                {loading
-                  ? "Please wait..."
-                  : tab === "login"
-                    ? "Sign In"
-                    : "Create Account"}
+                {loading ? "Signing in..." : "Sign In"}
               </button>
-              {tab === "login" && (
-                <p className="text-center text-xs text-muted-foreground">
-                  Don't have an account?{" "}
-                  <button
-                    type="button"
-                    onClick={() => setTab("register")}
-                    className="text-gold hover:underline"
-                  >
-                    Register here
-                  </button>
-                </p>
-              )}
             </form>
           </motion.div>
         </motion.div>

@@ -1,3 +1,4 @@
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Clapperboard, Film, Grid } from "lucide-react";
 import { Genre, type MovieStats } from "../hooks/useQueries";
 
@@ -28,6 +29,8 @@ interface SidebarProps {
   onFilterChange: (f: SidebarFilter) => void;
   stats: MovieStats | undefined;
   statsLoading: boolean;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 function getCount(
@@ -39,17 +42,21 @@ function getCount(
   return Number(stats.genreCounts[filter]);
 }
 
-export default function Sidebar({
+function SidebarContent({
   activeFilter,
   onFilterChange,
   stats,
   statsLoading,
-}: SidebarProps) {
+  onItemClick,
+}: {
+  activeFilter: SidebarFilter;
+  onFilterChange: (f: SidebarFilter) => void;
+  stats: MovieStats | undefined;
+  statsLoading: boolean;
+  onItemClick?: () => void;
+}) {
   return (
-    <aside
-      className="hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0 overflow-y-auto scrollbar-thin"
-      style={{ background: "#121B2B", borderRight: "1px solid #2A364A" }}
-    >
+    <>
       {/* Logo */}
       <div className="px-5 py-6" style={{ borderBottom: "1px solid #2A364A" }}>
         <div className="flex items-center gap-3 mb-1">
@@ -89,7 +96,10 @@ export default function Sidebar({
               <button
                 type="button"
                 key={item.filter}
-                onClick={() => onFilterChange(item.filter)}
+                onClick={() => {
+                  onFilterChange(item.filter);
+                  onItemClick?.();
+                }}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-left"
                 style={
                   active
@@ -145,6 +155,52 @@ export default function Sidebar({
           </a>
         </p>
       </div>
-    </aside>
+    </>
+  );
+}
+
+export default function Sidebar({
+  activeFilter,
+  onFilterChange,
+  stats,
+  statsLoading,
+  mobileOpen = false,
+  onMobileClose,
+}: SidebarProps) {
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside
+        className="hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0 overflow-y-auto scrollbar-thin"
+        style={{ background: "#121B2B", borderRight: "1px solid #2A364A" }}
+      >
+        <SidebarContent
+          activeFilter={activeFilter}
+          onFilterChange={onFilterChange}
+          stats={stats}
+          statsLoading={statsLoading}
+        />
+      </aside>
+
+      {/* Mobile sidebar drawer */}
+      <Sheet
+        open={mobileOpen}
+        onOpenChange={(open) => !open && onMobileClose?.()}
+      >
+        <SheetContent
+          side="left"
+          className="p-0 flex flex-col w-72 border-r-0"
+          style={{ background: "#121B2B", borderRight: "1px solid #2A364A" }}
+        >
+          <SidebarContent
+            activeFilter={activeFilter}
+            onFilterChange={onFilterChange}
+            stats={stats}
+            statsLoading={statsLoading}
+            onItemClick={onMobileClose}
+          />
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

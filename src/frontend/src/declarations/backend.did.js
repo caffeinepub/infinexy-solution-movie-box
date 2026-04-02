@@ -77,6 +77,7 @@ export const idlService = IDL.Service({
   'loginUser' : IDL.Func([IDL.Text, IDL.Text], [LoginResult], ['query']),
   'userExists' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
   'isAdminUser' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+  'changePassword' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [IDL.Bool], []),
   'addMovie' : IDL.Func(
       [IDL.Text, IDL.Text, IDL.Nat, IDL.Text, ExternalBlob, ExternalBlob],
       [MovieId],
@@ -165,6 +166,7 @@ export const idlFactory = ({ IDL }) => {
     'loginUser' : IDL.Func([IDL.Text, IDL.Text], [LoginResult], ['query']),
     'userExists' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
     'isAdminUser' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+    'changePassword' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [IDL.Bool], []),
     'addMovie' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Nat, IDL.Text, ExternalBlob, ExternalBlob],
         [MovieId],
