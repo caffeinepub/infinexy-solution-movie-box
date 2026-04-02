@@ -15,7 +15,6 @@ import {
   type Movie,
   useGetAllMovies,
   useGetStats,
-  useIsCallerAdmin,
 } from "./hooks/useQueries";
 
 const GENRE_LABELS: Record<string, string> = {
@@ -49,9 +48,8 @@ function AppContent() {
 
   const { data: movies, isLoading: moviesLoading } = useGetAllMovies();
   const { data: stats, isLoading: statsLoading } = useGetStats();
-  const { data: isBackendAdmin } = useIsCallerAdmin();
 
-  const isAdmin = auth.user?.isAdmin || !!isBackendAdmin;
+  const isAdmin = auth.user?.isAdmin ?? false;
 
   const uniqueYears = useMemo(() => {
     if (!movies) return [];

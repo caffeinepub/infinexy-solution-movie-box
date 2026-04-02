@@ -1,75 +1,88 @@
-import Order "mo:core/Order";
 import Text "mo:core/Text";
-import Array "mo:core/Array";
 import Time "mo:core/Time";
-import Iter "mo:core/Iter";
 import Map "mo:core/Map";
 import Int "mo:core/Int";
 import Runtime "mo:core/Runtime";
 import Storage "blob-storage/Storage";
-import AccessControl "authorization/access-control";
-import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
 import Principal "mo:core/Principal";
+import AccessControl "authorization/access-control";
 
 actor {
   include MixinStorage();
 
-  // User Authentication
-  let accessControlState = AccessControl.initState();
-  include MixinAuthorization(accessControlState);
+  // ── Migration: absorb stable variables from the previous version ──────────
+  stable var accessControlState : AccessControl.AccessControlState = AccessControl.initState();
+  stable var userProfiles : Map.Map<Principal, { name : Text }> = Map.empty();
 
-  // User Profile Management
-  public type UserProfile = {
-    name : Text;
+  // ── Username/Password Auth ─────────────────────────────────────────────────
+
+  type StoredUser = {
+    username : Text;
+    passwordHash : Text;
+    isAdmin : Bool;
   };
 
-  let userProfiles = Map.empty<Principal, UserProfile>();
+  stable var stableUsers : [(Text, StoredUser)] = [];
+  stable var firstUserRegistered : Bool = false;
 
-  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can access profiles");
+  let users = Map.fromIter<Text, StoredUser>(stableUsers.vals());
+
+  system func preupgrade() {
+    stableUsers := users.entries().toArray();
+  };
+
+  system func postupgrade() {
+    stableUsers := [];
+  };
+
+  /// Register a new user. Returns false if username already taken.
+  public func registerUser(username : Text, passwordHash : Text) : async Bool {
+    if (username.size() == 0) Runtime.trap("Username cannot be empty");
+    switch (users.get(username)) {
+      case (?_) { return false };
+      case null {};
     };
-    userProfiles.get(caller);
+    let isAdmin = not firstUserRegistered;
+    firstUserRegistered := true;
+    users.add(username, { username; passwordHash; isAdmin });
+    true;
   };
 
-  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
+  /// Validate credentials. Returns null if invalid, login info on success.
+  public query func loginUser(username : Text, passwordHash : Text) : async ?{ isAdmin : Bool } {
+    switch (users.get(username)) {
+      case null { null };
+      case (?u) {
+        if (u.passwordHash == passwordHash) ?{ isAdmin = u.isAdmin }
+        else null;
+      };
     };
-    userProfiles.get(user);
   };
 
-  public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
+  /// Check if a username exists (to re-validate a stored session on page load).
+  public query func userExists(username : Text) : async Bool {
+    switch (users.get(username)) {
+      case null { false };
+      case (?_) { true };
     };
-    userProfiles.add(caller, profile);
   };
 
-  // Movie Definitions
+  /// Returns true if the given username is admin.
+  public query func isAdminUser(username : Text) : async Bool {
+    switch (users.get(username)) {
+      case null { false };
+      case (?u) { u.isAdmin };
+    };
+  };
+
+  // ── Movies ─────────────────────────────────────────────────────────────────
+
   type Genre = {
     #bollywood;
     #hollywood;
     #gujarati;
     #tollywood;
-  };
-
-  module Genre {
-    public func compare(genre1 : Genre, genre2 : Genre) : Order.Order {
-      switch (genre1, genre2) {
-        case (#bollywood, #bollywood) { #equal };
-        case (#bollywood, _) { #less };
-        case (_, #bollywood) { #greater };
-        case (#gujarati, #gujarati) { #equal };
-        case (#gujarati, _) { #less };
-        case (_, #gujarati) { #greater };
-        case (#hollywood, #hollywood) { #equal };
-        case (#hollywood, _) { #less };
-        case (_, #hollywood) { #greater };
-        case (#tollywood, #tollywood) { #equal };
-      };
-    };
   };
 
   type MovieId = Text;
@@ -84,12 +97,6 @@ actor {
     video : Storage.ExternalBlob;
     uploadedAt : Int;
     uploadedBy : Principal;
-  };
-
-  module Movie {
-    public func compare(movie1 : Movie, movie2 : Movie) : Order.Order {
-      Text.compare(movie1.id, movie2.id);
-    };
   };
 
   let movies = Map.empty<MovieId, Movie>();
@@ -108,15 +115,17 @@ actor {
     title.concat(Time.now().toText());
   };
 
-  // Add new movie (authenticated users only)
-  public shared ({ caller }) func addMovie(title : Text, description : Text, year : Nat, genreText : Text, thumbnailBlob : Storage.ExternalBlob, videoBlob : Storage.ExternalBlob) : async MovieId {
-
-    if (title.trim(#char('\n')).size() == 0) {
-      Runtime.trap("Title cannot be empty");
-    };
+  public shared ({ caller }) func addMovie(
+    title : Text,
+    description : Text,
+    year : Nat,
+    genreText : Text,
+    thumbnailBlob : Storage.ExternalBlob,
+    videoBlob : Storage.ExternalBlob,
+  ) : async MovieId {
+    if (title.trim(#char('\n')).size() == 0) Runtime.trap("Title cannot be empty");
     let movieId = generateMovieId(title);
-
-    let movie : Movie = {
+    movies.add(movieId, {
       id = movieId;
       title;
       description;
@@ -126,22 +135,14 @@ actor {
       video = videoBlob;
       uploadedAt = Time.now();
       uploadedBy = caller;
-    };
-
-    movies.add(movieId, movie);
-
+    });
     movieId;
   };
 
-  // Delete movie (only uploader or admin)
-  public shared ({ caller }) func deleteMovie(movieId : MovieId) : async () {
-
+  public func deleteMovie(movieId : MovieId) : async () {
     switch (movies.get(movieId)) {
       case (null) { Runtime.trap("Movie not found") };
-      case (?movie) {
-        ignore movie;
-        movies.remove(movieId);
-      };
+      case (?_) { movies.remove(movieId) };
     };
   };
 
@@ -149,7 +150,6 @@ actor {
     movies.values().toArray();
   };
 
-  // Get movies by specific genre
   public query func getMoviesByGenre(genreText : Text) : async [Movie] {
     let genre = fromTextToGenre(genreText);
     movies.values().filter(func(m) { m.genre == genre }).toArray();
@@ -172,21 +172,14 @@ actor {
   };
 
   public query func getStats() : async MovieStats {
-    let moviesArray = movies.values().toArray();
-    let totalCount = moviesArray.size();
-    // Calculate counts for each genre
-    let bollywoodCount = moviesArray.filter(func(m) { m.genre == #bollywood }).size();
-    let hollywoodCount = moviesArray.filter(func(m) { m.genre == #hollywood }).size();
-    let gujaratiCount = moviesArray.filter(func(m) { m.genre == #gujarati }).size();
-    let tollywoodCount = moviesArray.filter(func(m) { m.genre == #tollywood }).size();
-
+    let arr = movies.values().toArray();
     {
-      totalMovies = totalCount;
+      totalMovies = arr.size();
       genreCounts = {
-        bollywood = bollywoodCount;
-        hollywood = hollywoodCount;
-        gujarati = gujaratiCount;
-        tollywood = tollywoodCount;
+        bollywood = arr.filter(func(m) { m.genre == #bollywood }).size();
+        hollywood = arr.filter(func(m) { m.genre == #hollywood }).size();
+        gujarati = arr.filter(func(m) { m.genre == #gujarati }).size();
+        tollywood = arr.filter(func(m) { m.genre == #tollywood }).size();
       };
     };
   };

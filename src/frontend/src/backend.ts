@@ -156,6 +156,10 @@ export interface backendInterface {
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchMovies(searchTerm: string): Promise<Array<Movie>>;
+    registerUser(username: string, passwordHash: string): Promise<boolean>;
+    loginUser(username: string, passwordHash: string): Promise<{ isAdmin: boolean } | null>;
+    userExists(username: string): Promise<boolean>;
+    isAdminUser(username: string): Promise<boolean>;
 }
 import type { ExternalBlob as _ExternalBlob, Genre as _Genre, Movie as _Movie, MovieId as _MovieId, UserProfile as _UserProfile, UserRole as _UserRole, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -425,6 +429,22 @@ export class Backend implements backendInterface {
             const result = await this.actor.searchMovies(arg0);
             return from_candid_vec_n11(this._uploadFile, this._downloadFile, result);
         }
+    }
+    async registerUser(arg0: string, arg1: string): Promise<boolean> {
+        const result = await this.actor.registerUser(arg0, arg1);
+        return result;
+    }
+    async loginUser(arg0: string, arg1: string): Promise<{ isAdmin: boolean } | null> {
+        const result = await this.actor.loginUser(arg0, arg1);
+        return result.length === 0 ? null : result[0];
+    }
+    async userExists(arg0: string): Promise<boolean> {
+        const result = await this.actor.userExists(arg0);
+        return result;
+    }
+    async isAdminUser(arg0: string): Promise<boolean> {
+        const result = await this.actor.isAdminUser(arg0);
+        return result;
     }
 }
 async function from_candid_ExternalBlob_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ExternalBlob): Promise<ExternalBlob> {

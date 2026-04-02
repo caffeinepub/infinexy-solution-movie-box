@@ -84,6 +84,10 @@ export interface _SERVICE {
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'searchMovies' : ActorMethod<[string], Array<Movie>>,
+  'registerUser' : ActorMethod<[string, string], boolean>,
+  'loginUser' : ActorMethod<[string, string], [] | [{ 'isAdmin': boolean }]>,
+  'userExists' : ActorMethod<[string], boolean>,
+  'isAdminUser' : ActorMethod<[string], boolean>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

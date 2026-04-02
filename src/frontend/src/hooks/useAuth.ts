@@ -5,6 +5,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { useActor } from "./useActor";
 
 export interface AuthUser {
   username: string;
@@ -20,14 +21,7 @@ export interface AuthContextType {
   isInitializing: boolean;
 }
 
-const STORAGE_KEY = "infinexy_users";
 const SESSION_KEY = "infinexy_session";
-const ADMIN_USERNAMES_KEY = "infinexy_admins";
-
-interface StoredUser {
-  username: string;
-  passwordHash: string;
-}
 
 function simpleHash(str: string): string {
   let hash = 5381;
@@ -37,97 +31,68 @@ function simpleHash(str: string): string {
   return (hash >>> 0).toString(16);
 }
 
-function getUsers(): StoredUser[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveUsers(users: StoredUser[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-}
-
-function getAdmins(): string[] {
-  try {
-    const stored = JSON.parse(
-      localStorage.getItem(ADMIN_USERNAMES_KEY) || "[]",
-    );
-    // Seed first user as admin if admins list is empty
-    return stored;
-  } catch {
-    return [];
-  }
-}
-
-function isUserAdmin(username: string): boolean {
-  const admins = getAdmins();
-  const users = getUsers();
-  // First registered user is always admin
-  if (users.length > 0 && users[0].username === username) return true;
-  return admins.includes(username);
-}
-
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function useAuthState(): AuthContextType {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const { actor } = useActor();
 
+  // Re-validate stored session against the canister on load
   useEffect(() => {
-    try {
-      const session = localStorage.getItem(SESSION_KEY);
-      if (session) {
-        const parsed = JSON.parse(session) as AuthUser;
-        const users = getUsers();
-        const exists = users.find((u) => u.username === parsed.username);
-        if (exists) {
-          setUser({
-            username: parsed.username,
-            isAdmin: isUserAdmin(parsed.username),
-          });
+    if (!actor) return;
+    let cancelled = false;
+    const validate = async () => {
+      try {
+        const raw = localStorage.getItem(SESSION_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as AuthUser;
+          const exists = await actor.userExists(parsed.username);
+          if (cancelled) return;
+          if (exists) {
+            const isAdmin = await actor.isAdminUser(parsed.username);
+            if (!cancelled) setUser({ username: parsed.username, isAdmin });
+          } else {
+            localStorage.removeItem(SESSION_KEY);
+          }
         }
+      } catch {
+        // ignore parse/network errors
+      } finally {
+        if (!cancelled) setIsInitializing(false);
       }
-    } catch {
-      // ignore
-    } finally {
-      setIsInitializing(false);
-    }
-  }, []);
+    };
+    validate();
+    return () => {
+      cancelled = true;
+    };
+  }, [actor]);
 
   const login = useCallback(
     async (username: string, password: string): Promise<boolean> => {
-      const users = getUsers();
-      const hash = simpleHash(password);
-      const found = users.find(
-        (u) => u.username === username && u.passwordHash === hash,
-      );
-      if (!found) return false;
-      const authUser: AuthUser = { username, isAdmin: isUserAdmin(username) };
+      if (!actor) return false;
+      const result = await actor.loginUser(username, simpleHash(password));
+      if (!result) return false;
+      const authUser: AuthUser = { username, isAdmin: result.isAdmin };
       setUser(authUser);
       localStorage.setItem(SESSION_KEY, JSON.stringify(authUser));
       return true;
     },
-    [],
+    [actor],
   );
 
   const register = useCallback(
     async (username: string, password: string): Promise<boolean> => {
-      const users = getUsers();
-      if (users.find((u) => u.username === username)) return false;
-      const newUser: StoredUser = {
-        username,
-        passwordHash: simpleHash(password),
-      };
-      users.push(newUser);
-      saveUsers(users);
-      const authUser: AuthUser = { username, isAdmin: isUserAdmin(username) };
+      if (!actor) return false;
+      const success = await actor.registerUser(username, simpleHash(password));
+      if (!success) return false;
+      const isAdmin = await actor.isAdminUser(username);
+      const authUser: AuthUser = { username, isAdmin };
       setUser(authUser);
       localStorage.setItem(SESSION_KEY, JSON.stringify(authUser));
       return true;
     },
-    [],
+    [actor],
   );
 
   const logout = useCallback(() => {

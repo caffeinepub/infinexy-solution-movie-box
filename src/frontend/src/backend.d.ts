@@ -35,9 +35,6 @@ export interface MovieStats {
     genreCounts: GenreCount;
     totalMovies: bigint;
 }
-export interface UserProfile {
-    name: string;
-}
 export type MovieId = string;
 export enum Genre {
     tollywood = "tollywood",
@@ -45,22 +42,15 @@ export enum Genre {
     bollywood = "bollywood",
     gujarati = "gujarati"
 }
-export enum UserRole {
-    admin = "admin",
-    user = "user",
-    guest = "guest"
-}
 export interface backendInterface {
+    registerUser(username: string, passwordHash: string): Promise<boolean>;
+    loginUser(username: string, passwordHash: string): Promise<{ isAdmin: boolean } | null>;
+    userExists(username: string): Promise<boolean>;
+    isAdminUser(username: string): Promise<boolean>;
     addMovie(title: string, description: string, year: bigint, genreText: string, thumbnailBlob: ExternalBlob, videoBlob: ExternalBlob): Promise<MovieId>;
-    assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     deleteMovie(movieId: MovieId): Promise<void>;
     getAllMovies(): Promise<Array<Movie>>;
-    getCallerUserProfile(): Promise<UserProfile | null>;
-    getCallerUserRole(): Promise<UserRole>;
     getMoviesByGenre(genreText: string): Promise<Array<Movie>>;
     getStats(): Promise<MovieStats>;
-    getUserProfile(user: Principal): Promise<UserProfile | null>;
-    isCallerAdmin(): Promise<boolean>;
-    saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchMovies(searchTerm: string): Promise<Array<Movie>>;
 }
