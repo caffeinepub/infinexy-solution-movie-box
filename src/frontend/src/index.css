@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+    /* Deep blue-black page bg #0B1220 */
+    --background: 0.13 0.025 250;
+    /* Near-white text #E9EEF7 */
+    --foreground: 0.93 0.012 250;
+    /* Card surface #1A2538 */
+    --card: 0.19 0.032 250;
+    --card-foreground: 0.93 0.012 250;
+    /* Popover/modal #172234 */
+    --popover: 0.17 0.03 250;
+    --popover-foreground: 0.93 0.012 250;
+    /* Gold accent #D6B25E */
+    --primary: 0.77 0.12 75;
+    --primary-foreground: 0.13 0.025 250;
+    /* Sidebar #121B2B */
+    --secondary: 0.16 0.028 250;
+    --secondary-foreground: 0.93 0.012 250;
+    /* Muted */
+    --muted: 0.21 0.03 250;
+    --muted-foreground: 0.6 0.02 250;
+    /* Accent gold */
+    --accent: 0.75 0.11 75;
+    --accent-foreground: 0.13 0.025 250;
+    /* Destructive red */
+    --destructive: 0.55 0.22 25;
+    --destructive-foreground: 0.98 0 0;
+    /* Border #2A364A */
+    --border: 0.26 0.03 250;
+    --input: 0.22 0.03 250;
+    --ring: 0.77 0.12 75;
+    --chart-1: 0.77 0.12 75;
+    --chart-2: 0.6 0.118 184;
+    --chart-3: 0.55 0.22 25;
+    --chart-4: 0.65 0.15 290;
+    --chart-5: 0.7 0.14 150;
+    --sidebar: 0.16 0.028 250;
+    --sidebar-foreground: 0.93 0.012 250;
+    --sidebar-primary: 0.77 0.12 75;
+    --sidebar-primary-foreground: 0.13 0.025 250;
+    --sidebar-accent: 0.21 0.03 250;
+    --sidebar-accent-foreground: 0.93 0.012 250;
+    --sidebar-border: 0.26 0.03 250;
+    --sidebar-ring: 0.77 0.12 75;
+  }
+
+  .dark {
+    --background: 0.13 0.025 250;
+    --foreground: 0.93 0.012 250;
+    --card: 0.19 0.032 250;
+    --card-foreground: 0.93 0.012 250;
+    --popover: 0.17 0.03 250;
+    --popover-foreground: 0.93 0.012 250;
+    --primary: 0.77 0.12 75;
+    --primary-foreground: 0.13 0.025 250;
+    --secondary: 0.16 0.028 250;
+    --secondary-foreground: 0.93 0.012 250;
+    --muted: 0.21 0.03 250;
+    --muted-foreground: 0.6 0.02 250;
+    --accent: 0.75 0.11 75;
+    --accent-foreground: 0.13 0.025 250;
+    --destructive: 0.55 0.22 25;
+    --destructive-foreground: 0.98 0 0;
+    --border: 0.26 0.03 250;
+    --input: 0.22 0.03 250;
+    --ring: 0.77 0.12 75;
+    --chart-1: 0.77 0.12 75;
+    --chart-2: 0.6 0.118 184;
+    --chart-3: 0.55 0.22 25;
+    --chart-4: 0.65 0.15 290;
+    --chart-5: 0.7 0.14 150;
+    --sidebar: 0.16 0.028 250;
+    --sidebar-foreground: 0.93 0.012 250;
+    --sidebar-primary: 0.77 0.12 75;
+    --sidebar-primary-foreground: 0.13 0.025 250;
+    --sidebar-accent: 0.21 0.03 250;
+    --sidebar-accent-foreground: 0.93 0.012 250;
+    --sidebar-border: 0.26 0.03 250;
+    --sidebar-ring: 0.77 0.12 75;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Plus Jakarta Sans", sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Bricolage Grotesque", sans-serif;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.26 0.03 250) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: oklch(0.26 0.03 250);
+    border-radius: 2px;
+  }
+}
