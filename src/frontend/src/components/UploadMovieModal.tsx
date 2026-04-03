@@ -16,6 +16,29 @@ const GENRES = [
   { value: Genre.tollywood, label: "Tollywood" },
 ];
 
+// Accept all common video formats explicitly plus the wildcard
+const VIDEO_ACCEPT = [
+  "video/*",
+  "video/mp4",
+  "video/x-m4v",
+  "video/quicktime", // MOV
+  "video/x-msvideo", // AVI
+  "video/x-matroska", // MKV
+  "video/x-ms-wmv", // WMV
+  "video/x-flv", // FLV
+  "video/webm",
+  "video/ogg",
+  "video/3gpp",
+  "video/3gpp2",
+  "video/mpeg",
+  "video/x-mpeg",
+  "video/mp2t", // TS
+  "video/x-ms-asf", // ASF
+  "video/divx",
+  "video/x-divx",
+  ".mp4,.m4v,.mov,.avi,.mkv,.wmv,.flv,.webm,.ogv,.3gp,.3g2,.mpeg,.mpg,.ts,.asf,.divx,.rm,.rmvb,.vob",
+].join(",");
+
 const currentYear = new Date().getFullYear();
 
 export default function UploadMovieModal({
@@ -283,12 +306,19 @@ export default function UploadMovieModal({
                   <input
                     id="upload-video"
                     type="file"
-                    accept="video/*"
+                    accept={VIDEO_ACCEPT}
                     className="hidden"
                     onChange={(e) => setVideoFile(e.target.files?.[0] ?? null)}
                     disabled={uploading}
                   />
                 </label>
+                <p
+                  className="mt-1.5 text-xs text-muted-foreground"
+                  style={{ color: "#6B7A8D" }}
+                >
+                  Supports MP4, MOV, AVI, MKV, WMV, FLV, WebM, MPEG and all
+                  other video formats
+                </p>
                 {uploading && videoProgress > 0 && (
                   <div className="mt-2">
                     <div className="flex justify-between text-xs text-muted-foreground mb-1">
