@@ -68,10 +68,13 @@ export function useAddMovie() {
   return useMutation({
     mutationFn: async (params: AddMovieParams) => {
       if (!actor) throw new Error("Not connected");
+
+      // Read both files into memory simultaneously
       const [thumbBytes, videoBytes] = await Promise.all([
         params.thumbnailFile.arrayBuffer().then((b) => new Uint8Array(b)),
         params.videoFile.arrayBuffer().then((b) => new Uint8Array(b)),
       ]);
+
       let thumbnailBlob = ExternalBlob.fromBytes(thumbBytes);
       let videoBlob = ExternalBlob.fromBytes(videoBytes);
       if (params.onThumbnailProgress) {

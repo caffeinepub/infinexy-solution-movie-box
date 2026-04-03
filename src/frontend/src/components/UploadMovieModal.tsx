@@ -1,6 +1,6 @@
 import { Film, Image, Loader2, Upload, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Genre, useAddMovie } from "../hooks/useQueries";
 
@@ -53,8 +53,81 @@ export default function UploadMovieModal({
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbProgress, setThumbProgress] = useState(0);
   const [videoProgress, setVideoProgress] = useState(0);
+  const [posterUrl, setPosterUrl] = useState<string | null>(null);
+  const [fetchingMovie, setFetchingMovie] = useState(false);
+
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const addMovie = useAddMovie();
+
+  const fetchMovieInfo = useCallback(async (movieTitle: string) => {
+    if (!movieTitle.trim()) {
+      setPosterUrl(null);
+      setYear(String(currentYear));
+      return;
+    }
+    setFetchingMovie(true);
+    try {
+      const res = await fetch(
+        `https://www.omdbapi.com/?t=${encodeURIComponent(movieTitle.trim())}&apikey=trilogy`,
+      );
+      const data = await res.json();
+      if (data.Response === "True") {
+        if (data.Year) {
+          // Extract 4-digit year from strings like "2021–" or "2019"
+          const yearMatch = String(data.Year).match(/\d{4}/);
+          if (yearMatch) setYear(yearMatch[0]);
+        }
+        if (data.Poster && data.Poster !== "N/A") {
+          setPosterUrl(data.Poster);
+        }
+      }
+    } catch {
+      // Silently ignore network errors
+    } finally {
+      setFetchingMovie(false);
+    }
+  }, []);
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setTitle(value);
+
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+    if (!value.trim()) {
+      setPosterUrl(null);
+      setYear(String(currentYear));
+      setFetchingMovie(false);
+      return;
+    }
+
+    setFetchingMovie(true);
+    debounceTimer.current = setTimeout(() => {
+      fetchMovieInfo(value);
+    }, 800);
+  };
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
+
+  const resetForm = () => {
+    setTitle("");
+    setDescription("");
+    setYear(String(currentYear));
+    setGenre(Genre.bollywood);
+    setThumbnailFile(null);
+    setVideoFile(null);
+    setThumbProgress(0);
+    setVideoProgress(0);
+    setPosterUrl(null);
+    setFetchingMovie(false);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +135,8 @@ export default function UploadMovieModal({
       toast.error("Title is required");
       return;
     }
-    if (!thumbnailFile) {
+    // Thumbnail is optional if posterUrl is set
+    if (!thumbnailFile && !posterUrl) {
       toast.error("Thumbnail is required");
       return;
     }
@@ -75,27 +149,37 @@ export default function UploadMovieModal({
       toast.error("Invalid year");
       return;
     }
+
+    let finalThumbnailFile = thumbnailFile;
+
+    // If no file chosen but posterUrl exists, fetch poster and convert to File
+    if (!finalThumbnailFile && posterUrl) {
+      try {
+        const imgRes = await fetch(posterUrl);
+        const blob = await imgRes.blob();
+        finalThumbnailFile = new File([blob], "poster.jpg", {
+          type: "image/jpeg",
+        });
+      } catch {
+        toast.error("Failed to fetch auto-poster. Please upload manually.");
+        return;
+      }
+    }
+
     try {
       await addMovie.mutateAsync({
         title: title.trim(),
         description: description.trim(),
         year: yearNum,
         genre,
-        thumbnailFile,
+        thumbnailFile: finalThumbnailFile!,
         videoFile,
         onThumbnailProgress: setThumbProgress,
         onVideoProgress: setVideoProgress,
       });
       toast.success("Movie uploaded successfully!");
       onClose();
-      setTitle("");
-      setDescription("");
-      setYear(String(currentYear));
-      setGenre(Genre.bollywood);
-      setThumbnailFile(null);
-      setVideoFile(null);
-      setThumbProgress(0);
-      setVideoProgress(0);
+      resetForm();
     } catch (err) {
       toast.error(
         `Upload failed: ${err instanceof Error ? err.message : "Unknown error"}`,
@@ -162,16 +246,35 @@ export default function UploadMovieModal({
                 >
                   Title *
                 </label>
-                <input
-                  id="upload-title"
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Movie title"
-                  className="w-full rounded-lg px-4 py-2.5 text-sm bg-[#0B1220] border border-[#2A364A] text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors"
-                  data-ocid="upload.input"
-                  disabled={uploading}
-                />
+                <div className="relative">
+                  <input
+                    id="upload-title"
+                    type="text"
+                    value={title}
+                    onChange={handleTitleChange}
+                    placeholder="Movie title (auto-fetches year & poster)"
+                    className="w-full rounded-lg px-4 py-2.5 pr-10 text-sm bg-[#0B1220] border border-[#2A364A] text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors"
+                    data-ocid="upload.input"
+                    disabled={uploading}
+                  />
+                  {fetchingMovie && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <Loader2
+                        size={15}
+                        className="animate-spin"
+                        style={{ color: "#D6B25E" }}
+                      />
+                    </div>
+                  )}
+                </div>
+                {posterUrl && !thumbnailFile && (
+                  <p
+                    className="mt-1 text-xs font-medium"
+                    style={{ color: "#4CAF50" }}
+                  >
+                    ✓ Movie found — year &amp; poster auto-filled
+                  </p>
+                )}
               </div>
               {/* Description */}
               <div>
@@ -239,14 +342,62 @@ export default function UploadMovieModal({
               {/* Thumbnail */}
               <div>
                 <p className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Thumbnail Image *
+                  Thumbnail Image{thumbnailFile || posterUrl ? " " : " *"}
+                  {posterUrl && !thumbnailFile && (
+                    <span
+                      className="ml-2 normal-case font-medium text-xs px-1.5 py-0.5 rounded"
+                      style={{
+                        color: "#4CAF50",
+                        background: "rgba(76,175,80,0.12)",
+                        border: "1px solid rgba(76,175,80,0.3)",
+                      }}
+                    >
+                      Auto-fetched
+                    </span>
+                  )}
                 </p>
+
+                {/* Auto-fetched poster preview */}
+                {posterUrl && !thumbnailFile && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    className="flex items-center gap-3 mb-2 p-2 rounded-lg"
+                    style={{
+                      background: "rgba(76,175,80,0.07)",
+                      border: "1px solid rgba(76,175,80,0.2)",
+                    }}
+                  >
+                    <img
+                      src={posterUrl}
+                      alt="Auto-fetched poster"
+                      className="rounded object-cover flex-shrink-0"
+                      style={{ width: 54, height: 80 }}
+                      onError={() => setPosterUrl(null)}
+                    />
+                    <div>
+                      <p
+                        className="text-xs font-semibold"
+                        style={{ color: "#4CAF50" }}
+                      >
+                        ✓ Auto-fetched poster
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        You can override with your own image below
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+
                 <label
                   htmlFor="upload-thumbnail"
                   className="flex items-center gap-3 rounded-lg px-4 py-3 cursor-pointer transition-colors"
                   style={{
                     background: "#0B1220",
-                    border: "1px dashed #2A364A",
+                    border: `1px dashed ${
+                      thumbnailFile ? "#D6B25E" : "#2A364A"
+                    }`,
                   }}
                   data-ocid="upload.upload_button"
                 >
@@ -254,8 +405,23 @@ export default function UploadMovieModal({
                   <span className="text-sm text-muted-foreground flex-1 truncate">
                     {thumbnailFile
                       ? thumbnailFile.name
-                      : "Choose thumbnail image..."}
+                      : posterUrl
+                        ? "Override poster (optional)..."
+                        : "Choose thumbnail image..."}
                   </span>
+                  {thumbnailFile && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setThumbnailFile(null);
+                      }}
+                      className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                      disabled={uploading}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
                   <input
                     id="upload-thumbnail"
                     type="file"
